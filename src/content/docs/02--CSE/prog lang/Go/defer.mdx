@@ -1,0 +1,162 @@
+---
+title: defer
+lastUpdated: 2025-09-25
+---
+
+# **Go 언어의 `defer` 문법과 활용**
+
+Go 언어는 리소스 정리와 예외 처리의 단순화에 큰 가치를 두며, 이를 대표하는 문법이 defer이다. defer는 함수 실행이 끝나기 직전 예약된 동작을 수행한다. 이 문법은 Python의 with 구문이나 Java, C++의 try/finally 구문과 유사한 역할을 하면서도 Go다운 간결함을 유지한다.
+
+---
+
+## **`defer`의 동작 원리**
+
+defer는 호출된 순서대로 스택에 쌓이고, 함수가 종료될 때 역순으로 실행된다. 다음 예제는 이 원리를 직관적으로 보여준다.
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("start")
+
+    defer fmt.Println("first defer")
+    defer fmt.Println("second defer")
+    defer fmt.Println("third defer")
+
+    fmt.Println("end")
+}
+```
+
+실행 결과는 다음과 같다.
+
+```text
+start
+end
+third defer
+second defer
+first defer
+```
+
+---
+
+## **리소스 정리에서의 활용**
+
+리소스 해제는 함수 본문에서 여러 지점에 return이 등장할 때 특히 취약하다. defer를 활용하면 리소스를 획득한 시점에서 정리 절차를 예약할 수 있어 코드의 신뢰성을 높인다.
+
+```go
+func readFile(name string) ([]byte, error) {
+    f, err := os.Open(name)
+    if err != nil {
+        return nil, err
+    }
+    defer f.Close()
+
+    return io.ReadAll(f)
+}
+```
+
+락 해제에서도 동일한 패턴이 쓰인다.
+
+```go
+func updateSharedData(mu *sync.Mutex, data *int) {
+    mu.Lock()
+    defer mu.Unlock()
+
+    *data++
+}
+```
+
+---
+
+## **익명 함수와 `defer`**
+
+defer는 단일 호출뿐 아니라 여러 줄의 정리 로직도 예약할 수 있다. 이때 익명 함수를 활용한다.
+
+```go
+defer func() {
+    fmt.Println("cleanup start")
+    recover()
+    fmt.Println("cleanup done")
+}()
+```
+
+이 방식은 로컬 변수를 캡처하거나 panic을 복구하는 데 유용하다.
+
+---
+
+## **루프 변수와 캡처**
+
+루프에서 defer를 사용할 때는 변수 캡처 방식에 주의해야 한다. 익명 함수가 변수를 직접 캡처하면 반복문 종료 시점의 최종 값이 반영된다.
+
+```go
+for i := 0; i < 3; i++ {
+    defer func() {
+        fmt.Println("wrong:", i)
+    }()
+}
+```
+
+위 코드는 3을 세 번 출력한다. 의도한 값을 출력하려면 인자 전달을 통해 값을 복사해야 한다.
+
+> **Go 1.22+**: Go 1.22부터 루프 변수의 스코핑이 변경되어, 각 반복(iteration)마다 변수의 새 인스턴스가 생성된다. 따라서 Go 1.22 이상에서는 위의 "잘못된" 예제도 올바르게 2, 1, 0을 출력한다. 그러나 이전 버전과의 호환성을 위해 인자 전달 방식을 사용하는 것이 여전히 권장된다.
+
+```go
+for i := 0; i < 3; i++ {
+    defer func(val int) {
+        fmt.Println("correct:", val)
+    }(i)
+}
+```
+
+---
+
+## **panic과 `defer`**
+
+함수 실행 중 panic이 발생해도 `defer`는 보장된다. 따라서 cleanup 로직은 항상 실행된다.
+
+```go
+func main() {
+    defer fmt.Println("cleanup 1")
+    defer fmt.Println("cleanup 2")
+
+    fmt.Println("before panic")
+    panic("something went wrong")
+}
+```
+
+출력은 다음과 같다.
+
+```text
+before panic
+cleanup 2
+cleanup 1
+panic: something went wrong
+```
+
+---
+
+## **반환값 수정**
+
+`defer`는 named return 값을 수정하는 데도 쓰일 수 있다.
+
+```go
+func f() (n int) {
+    defer func() { n += 10 }()
+    n = 5
+    return
+}
+
+func main() {
+    fmt.Println(f()) // 15
+}
+```
+
+이 기능은 신중하게 사용할 필요가 있다. 의도가 명확하지 않으면 가독성을 해칠 수 있다.
+
+---
+
+## **결론**
+
+defer는 리소스 정리와 예외 안전성을 단순한 구문으로 해결하는 Go 언어의 중요한 장치이다. 리소스를 획득한 즉시 정리를 예약하는 습관은 안전한 코드 작성을 돕는다. defer는 스택 기반 실행, 익명 함수 활용, panic 복구 지원 등을 통해 Python의 컨텍스트 매니저와 같은 역할을 수행하면서도 Go의 간결한 철학을 잘 보여준다.

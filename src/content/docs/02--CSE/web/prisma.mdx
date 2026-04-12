@@ -1,0 +1,472 @@
+---
+title: Prisma 입문 가이드
+description: Next-generation ORM으로 데이터베이스를 다루는 현대적인 방법
+draft: true
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import { Aside } from '@astrojs/starlight/components';
+
+# Prisma ORM 완벽 가이드 🚀
+
+## Prisma가 뭐야? (What is Prisma?)
+
+Prisma는 **Next-generation Node.js & TypeScript ORM**이야. 기존의 ORM들과 달리 Type-safe하고 Auto-completion이 완벽하게 지원되는 게 특징이지. 
+
+<Aside type="tip">
+<strong>ORM (Object-Relational Mapping)</strong>이란?
+데이터베이스 테이블을 객체로 매핑해주는 기술이야. SQL을 직접 작성하지 않고도 데이터베이스를 다룰 수 있게 해주지!
+</Aside>
+
+### Prisma의 주요 구성 요소
+
+```mermaid
+graph TD
+    A[Prisma] --> B[Prisma Client]
+    A --> C[Prisma Migrate]
+    A --> D[Prisma Studio]
+    A --> E[Prisma Schema]
+    
+    B --> F[Type-safe Database Client]
+    C --> G[Database Migration Tool]
+    D --> H[Visual Database Browser]
+    E --> I[Database Schema Definition]
+    
+    style A fill:#5a67d8,stroke:#333,stroke-width:2px,color:#fff
+    style B fill:#667eea,stroke:#333,stroke-width:2px,color:#fff
+    style C fill:#667eea,stroke:#333,stroke-width:2px,color:#fff
+    style D fill:#667eea,stroke:#333,stroke-width:2px,color:#fff
+    style E fill:#667eea,stroke:#333,stroke-width:2px,color:#fff
+```
+
+## 왜 Prisma를 써야 할까? 🤔
+
+전통적인 방식과 비교해보면 차이가 확실해:
+
+<Tabs>
+  <TabItem label="Traditional SQL">
+    ```javascript
+    // SQL 직접 작성 - Error-prone!
+    const users = await db.query(
+      'SELECT * FROM users WHERE age > $1 AND active = $2',
+      [18, true]
+    );
+    ```
+  </TabItem>
+  <TabItem label="Prisma">
+    ```typescript
+    // Type-safe & Auto-completion 지원!
+    const users = await prisma.user.findMany({
+      where: {
+        age: { gt: 18 },
+        active: true
+      }
+    });
+    ```
+  </TabItem>
+</Tabs>
+
+## 빠른 시작 (Quick Start) 🏃‍♂️
+
+### 1. 프로젝트 초기화
+
+```bash
+# 새 프로젝트 생성
+mkdir prisma-tutorial && cd prisma-tutorial
+npm init -y
+
+# TypeScript 설정 (선택사항이지만 강력 추천!)
+npm install -D typescript ts-node @types/node
+npx tsc --init
+
+# Prisma 설치 (prisma CLI는 dev dependency, client는 production dependency)
+npm install -D prisma
+npm install @prisma/client
+```
+
+### 2. Prisma 초기화
+
+```bash
+npx prisma init
+```
+
+이 명령어가 생성하는 것들:
+- `prisma/schema.prisma` - 데이터베이스 스키마 정의 파일
+- `.env` - 환경 변수 파일 (DATABASE_URL 포함)
+- `.gitignore` - Git에서 .env 파일 제외
+
+## Schema 정의하기 📝
+
+`prisma/schema.prisma` 파일에서 데이터베이스 구조를 정의해보자:
+
+```prisma
+// 데이터베이스 연결 설정
+datasource db {
+  provider = "postgresql"  // mysql, sqlite, mongodb도 가능!
+  url      = env("DATABASE_URL")
+}
+
+// Prisma Client 생성 설정
+generator client {
+  provider = "prisma-client-js"
+}
+
+// User 모델 정의
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String?
+  role      Role     @default(USER)
+  posts     Post[]   // 1:N relation
+  profile   Profile? // 1:1 relation
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Post 모델
+model Post {
+  id         Int        @id @default(autoincrement())
+  title      String
+  content    String?
+  published  Boolean    @default(false)
+  author     User       @relation(fields: [authorId], references: [id])
+  authorId   Int
+  categories Category[] // M:N relation
+  createdAt  DateTime   @default(now())
+}
+
+// Category 모델
+model Category {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  posts Post[]
+}
+
+// Profile 모델
+model Profile {
+  id     Int    @id @default(autoincrement())
+  bio    String
+  user   User   @relation(fields: [userId], references: [id])
+  userId Int    @unique
+}
+
+// Enum 정의
+enum Role {
+  USER
+  ADMIN
+}
+```
+
+### Prisma Schema의 핵심 개념
+
+```mermaid
+erDiagram
+    USER ||--o{ POST : writes
+    USER ||--o| PROFILE : has
+    POST }o--o{ CATEGORY : belongs_to
+    
+    USER {
+        int id PK
+        string email UK
+        string name
+        Role role
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    POST {
+        int id PK
+        string title
+        string content
+        boolean published
+        int authorId FK
+        datetime createdAt
+    }
+    
+    CATEGORY {
+        int id PK
+        string name UK
+    }
+    
+    PROFILE {
+        int id PK
+        string bio
+        int userId FK
+    }
+```
+
+## Migration 실행하기 🔄
+
+Schema를 정의했으니 이제 실제 데이터베이스에 반영해보자:
+
+```bash
+# 개발 환경에서 마이그레이션 생성 및 적용
+npx prisma migrate dev --name init
+
+# Production 환경에서는
+npx prisma migrate deploy
+```
+
+<Aside type="caution">
+**주의사항**: `migrate dev`는 개발 환경에서만 사용해! Production에서는 데이터 손실이 발생할 수 있어.
+</Aside>
+
+## Prisma Client 사용하기 💻
+
+### 기본 CRUD Operations
+
+```typescript
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
+
+async function main() {
+  // CREATE - 새 사용자 생성
+  const user = await prisma.user.create({
+    data: {
+      email: 'alice@prisma.io',
+      name: 'Alice',
+      posts: {
+        create: {
+          title: 'Hello World',
+          content: 'My first post!'
+        }
+      }
+    },
+    include: {
+      posts: true
+    }
+  })
+  console.log(user)
+
+  // READ - 모든 사용자 조회
+  const users = await prisma.user.findMany({
+    where: {
+      email: {
+        contains: 'prisma.io'
+      }
+    },
+    include: {
+      posts: {
+        where: {
+          published: true
+        }
+      }
+    }
+  })
+
+  // UPDATE - 사용자 정보 수정
+  const updatedUser = await prisma.user.update({
+    where: {
+      email: 'alice@prisma.io'
+    },
+    data: {
+      name: 'Alice Kim'
+    }
+  })
+
+  // DELETE - 사용자 삭제
+  const deletedUser = await prisma.user.delete({
+    where: {
+      email: 'alice@prisma.io'
+    }
+  })
+}
+
+main()
+  .catch((e) => {
+    throw e
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })
+```
+
+### Advanced Queries
+
+```typescript
+// Aggregation - 집계 함수
+const userCount = await prisma.user.count({
+  where: {
+    posts: {
+      some: {
+        published: true
+      }
+    }
+  }
+})
+
+// Grouping - 그룹화
+const groupedPosts = await prisma.post.groupBy({
+  by: ['published'],
+  _count: {
+    _all: true
+  }
+})
+
+// Transaction - 트랜잭션
+const [user, post] = await prisma.$transaction([
+  prisma.user.create({
+    data: { email: 'bob@prisma.io', name: 'Bob' }
+  }),
+  prisma.post.create({
+    data: { 
+      title: 'Join the Prisma Community',
+      authorId: 1
+    }
+  })
+])
+
+// Raw SQL - 필요할 때 직접 SQL 실행
+const result = await prisma.$queryRaw`
+  SELECT * FROM "User" 
+  WHERE email = ${email}
+`
+```
+
+## Prisma Studio 사용하기 🎨
+
+Prisma Studio는 데이터베이스를 시각적으로 탐색하고 편집할 수 있는 GUI 도구야:
+
+```bash
+npx prisma studio
+```
+
+브라우저에서 `http://localhost:5555`로 접속하면 다음과 같은 기능을 사용할 수 있어:
+- 데이터 조회 및 필터링
+- 데이터 추가, 수정, 삭제
+- 관계 탐색
+- 데이터 내보내기
+
+## Best Practices & Tips 💡
+
+### 1. Type Generation 활용하기
+
+Prisma는 Schema를 기반으로 TypeScript 타입을 자동 생성해줘:
+
+```typescript
+import { User, Post, Prisma } from '@prisma/client'
+
+// Prisma가 생성한 타입 활용
+type UserWithPosts = Prisma.UserGetPayload<{
+  include: { posts: true }
+}>
+
+function displayUser(user: UserWithPosts) {
+  console.log(`${user.name} has ${user.posts.length} posts`)
+}
+```
+
+### 2. Client Extensions 사용하기
+
+> **참고**: Prisma 4.16.0 이전에 사용되던 `prisma.$use()` 미들웨어 API는 deprecated 되었다. 현재 권장되는 방식은 `$extends()`를 사용한 Client Extensions이다.
+
+```typescript
+// Client Extensions를 이용한 쿼리 로깅
+const prisma = new PrismaClient().$extends({
+  query: {
+    $allModels: {
+      async $allOperations({ model, operation, args, query }) {
+        const before = Date.now()
+        const result = await query(args)
+        const after = Date.now()
+
+        console.log(`Query ${model}.${operation} took ${after - before}ms`)
+        return result
+      },
+    },
+  },
+})
+
+// Soft Delete 구현
+const xprisma = prisma.$extends({
+  query: {
+    user: {
+      async delete({ args, query }) {
+        return prisma.user.update({
+          where: args.where,
+          data: { deletedAt: new Date() },
+        })
+      },
+    },
+  },
+})
+```
+
+### 3. Connection Pooling
+
+Production 환경에서는 connection pool 설정이 중요해:
+
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/mydb?connection_limit=5"
+```
+
+### 4. Seeding 데이터
+
+개발 환경에서 테스트 데이터를 자동으로 생성하려면:
+
+```typescript
+// prisma/seed.ts
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
+
+async function main() {
+  const alice = await prisma.user.upsert({
+    where: { email: 'alice@prisma.io' },
+    update: {},
+    create: {
+      email: 'alice@prisma.io',
+      name: 'Alice',
+      posts: {
+        create: [
+          {
+            title: 'Check out Prisma with Next.js',
+            content: 'https://www.prisma.io/nextjs',
+            published: true,
+          },
+          {
+            title: 'Follow Prisma on Twitter',
+            content: 'https://twitter.com/prisma',
+            published: true,
+          },
+        ],
+      },
+    },
+  })
+  
+  console.log({ alice })
+}
+
+main()
+  .catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })
+```
+
+`package.json`에 seed 스크립트 추가:
+
+```json
+{
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  }
+}
+```
+
+## 마치며 🎯
+
+이제 Prisma의 기본을 마스터했어! 다음 단계로는:
+
+1. **Prisma with GraphQL** - Nexus나 TypeGraphQL과 함께 사용하기
+2. **Prisma with REST API** - Express나 Fastify와 통합하기
+3. **Advanced Patterns** - Repository 패턴, Unit of Work 구현하기
+4. **Performance Optimization** - Query 최적화, N+1 문제 해결하기
+
+<Aside type="note">
+**Pro Tip**: Prisma의 공식 문서와 [Prisma Examples](https://github.com/prisma/prisma-examples) 레포지토리를 참고하면 더 많은 실전 예제를 볼 수 있다.
+</Aside>

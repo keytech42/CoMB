@@ -1,0 +1,238 @@
+---
+title: "Git CLI Process Journey : to cmd_merge()"
+draft: true
+---
+
+# Git CLI에서 cmd_merge()까지의 여정
+
+## 개요
+
+사용자가 터미널에서 `git merge feat`를 입력하면 어떻게 `cmd_merge()` 함수가 호출될까요? 이 과정은 마치 편지가 우체국을 거쳐 최종 목적지에 도달하는 것처럼 여러 단계를 거칩니다. 이 문서에서는 그 여정을 단계별로 추적해보겠습니다.
+
+## 1단계: 시스템 쉘에서 Git 실행 파일 찾기
+
+```bash
+git merge feat
+```
+
+사용자가 이 명령을 입력하면, 운영체제의 쉘(bash, zsh 등)은 먼저 `git`이라는 실행 파일을 찾습니다. 이 과정은 다음과 같습니다:
+
+1. **PATH 환경 변수 검색**: 쉘은 PATH에 등록된 디렉토리들을 순서대로 탐색합니다
+2. **실행 파일 발견**: 보통 `/usr/bin/git` 또는 `/usr/local/bin/git`에서 Git 실행 파일을 찾습니다
+3. **프로세스 생성**: 쉘은 새로운 프로세스를 생성하고 `git` 바이너리를 실행합니다
+
+## 2단계: Git 메인 함수 진입
+
+Git의 진입점은 `git.c` 파일의 `main()` 함수입니다:
+
+```c
+/* git.c */
+int main(int argc, const char **argv)
+{
+    const char *cmd;
+    int done_help = 0;
+
+    /* 실행 파일 이름에서 명령 추출
+     * 예: git-merge로 실행되었다면 "merge"를 추출 */
+    cmd = argv[0];
+    if (!cmd)
+        cmd = "git-help";
+    else {
+        const char *slash = find_last_dir_sep(cmd);
+        if (slash)
+            cmd = slash + 1;
+    }
+
+    /* Git 환경 초기화 */
+    startup_info = &git_startup_info;
+    
+    /* 명령행 인자 처리 */
+    argv++;
+    argc--;
+    
+    /* 핵심: handle_builtin() 호출! */
+    handle_builtin(argc, argv);
+    
+    return 0;
+}
+```
+
+## 3단계: 내장 명령어 처리 - handle_builtin()
+
+Git은 두 가지 종류의 명령어를 지원합니다:
+- **내장 명령어(builtin)**: Git 바이너리에 직접 포함된 명령어
+- **외부 명령어**: 별도의 스크립트나 프로그램으로 구현된 명령어
+
+`merge`는 내장 명령어이므로 `handle_builtin()` 함수에서 처리됩니다:
+
+```c
+/* git.c */
+static int handle_builtin(int argc, const char **argv)
+{
+    const char *cmd;
+    struct cmd_struct *builtin;
+    
+    cmd = argv[0];
+    
+    /* 내장 명령어 테이블에서 "merge" 찾기 */
+    builtin = get_builtin(cmd);
+    
+    if (builtin)
+        return run_builtin(builtin, argc, argv);
+        
+    return 0;
+}
+```
+
+## 4단계: 명령어 테이블 - Git의 전화번호부
+
+Git은 모든 내장 명령어를 테이블로 관리합니다. 이것은 마치 전화번호부처럼 명령어 이름과 실제 함수를 연결합니다:
+
+```c
+/* git.c */
+static struct cmd_struct commands[] = {
+    { "add", cmd_add, RUN_SETUP | NEED_WORK_TREE },
+    { "branch", cmd_branch, RUN_SETUP | DELAY_PAGER_CONFIG },
+    { "checkout", cmd_checkout, RUN_SETUP | NEED_WORK_TREE },
+    { "commit", cmd_commit, RUN_SETUP | NEED_WORK_TREE },
+    { "diff", cmd_diff, NO_PARSEOPT },
+    { "fetch", cmd_fetch, RUN_SETUP },
+    { "log", cmd_log, RUN_SETUP },
+    { "merge", cmd_merge, RUN_SETUP | NEED_WORK_TREE },  /* 여기! */
+    { "pull", cmd_pull, RUN_SETUP | NEED_WORK_TREE },
+    { "push", cmd_push, RUN_SETUP },
+    { "rebase", cmd_rebase, RUN_SETUP | NEED_WORK_TREE },
+    /* ... 더 많은 명령어들 ... */
+};
+```
+
+각 항목의 구조는 다음과 같습니다:
+- **명령어 이름**: "merge"
+- **함수 포인터**: `cmd_merge` (실제 작업을 수행하는 함수)
+- **플래그**: `RUN_SETUP | NEED_WORK_TREE` (실행 조건)
+
+플래그의 의미:
+- `RUN_SETUP`: Git 저장소 설정을 로드해야 함
+- `NEED_WORK_TREE`: 작업 트리가 필요함 (bare 저장소에서는 실행 불가)
+
+## 5단계: 명령어 실행 준비 - run_builtin()
+
+명령어를 찾았으니 이제 실행할 차례입니다. 하지만 바로 실행하지 않고 준비 작업을 먼저 수행합니다:
+
+```c
+/* git.c */
+static int run_builtin(struct cmd_struct *p, int argc, const char **argv)
+{
+    int status;
+    struct stat st;
+    const char *prefix;
+    
+    /* 플래그에 따른 사전 준비 작업 */
+    if (p->option & RUN_SETUP) {
+        /* Git 저장소인지 확인하고 설정 로드 */
+        prefix = setup_git_directory();
+    }
+    
+    if (p->option & NEED_WORK_TREE) {
+        /* 작업 트리가 있는지 확인 */
+        if (!have_repository || is_bare_repository())
+            die(_("this operation must be run in a work tree"));
+    }
+    
+    /* 추가 환경 설정 */
+    commit_pager_choice();
+    
+    /* 드디어! 실제 명령어 함수 호출 */
+    status = p->fn(argc, argv, prefix, the_repository);
+    
+    /* 정리 작업 */
+    if (status)
+        return status;
+        
+    /* 지연된 작업들 수행 */
+    run_post_command_hook();
+    
+    return 0;
+}
+```
+
+## 6단계: cmd_merge() 도달!
+
+이제 드디어 `builtin/merge.c`의 `cmd_merge()` 함수가 호출됩니다:
+
+```c
+/* builtin/merge.c */
+int cmd_merge(int argc, 
+              const char **argv, 
+              const char *prefix,
+              struct repository *repo)
+{
+    /* 병합 작업 시작! */
+    // ...
+}
+```
+
+함수 매개변수의 의미:
+- `argc`: 인자 개수 (원래 명령에서 "git" 부분은 제외)
+- `argv`: 인자 배열 (argv[0]은 "merge", argv[1]은 "feature" 같은 병합 대상)
+- `prefix`: 현재 디렉토리의 Git 저장소 루트로부터의 상대 경로
+- `repo`: 저장소 정보를 담은 구조체
+
+## 전체 호출 스택 요약
+
+사용자가 `git merge feature`를 입력했을 때의 전체 호출 스택을 정리하면:
+
+```
+1. 쉘 프로세스
+   └─> 2. git (main 함수)
+       └─> 3. handle_builtin()
+           └─> 4. get_builtin("merge")
+               └─> 5. run_builtin()
+                   └─> 6. cmd_merge()
+```
+
+## 흥미로운 사실들
+
+### 1. Git의 모듈화 설계
+
+Git은 각 명령어를 독립적인 함수로 구현합니다. 이는 다음과 같은 장점이 있습니다:
+- **유지보수 용이성**: 각 명령어를 독립적으로 수정 가능
+- **테스트 가능성**: 개별 명령어를 단위 테스트 가능
+- **확장성**: 새로운 명령어 추가가 쉬움
+
+### 2. 플래그 시스템의 지혜
+
+명령어마다 다른 요구사항이 있습니다:
+- `git init`는 저장소가 없어도 실행 가능 (RUN_SETUP 없음)
+- `git merge`는 작업 트리가 필요 (NEED_WORK_TREE)
+- `git config`는 어디서든 실행 가능 (특별한 플래그 없음)
+
+### 3. 왜 이렇게 복잡할까?
+
+이 복잡한 구조는 Git의 유연성을 위해 필요합니다:
+- **다양한 실행 환경 지원**: bare 저장소, 일반 저장소, 저장소 외부
+- **일관된 에러 처리**: 모든 명령어가 동일한 검증 과정을 거침
+- **확장 가능한 아키텍처**: 새로운 기능 추가가 기존 코드에 미치는 영향 최소화
+
+## 실습 제안
+
+이 과정을 더 깊이 이해하려면:
+
+1. **GDB로 추적하기**: 
+   ```bash
+   gdb git
+   break main
+   run merge feature
+   step
+   ```
+
+2. **strace로 시스템 콜 관찰**:
+   ```bash
+   strace -e trace=execve git merge feature
+   ```
+
+3. **Git 소스 코드 직접 수정**:
+   - `cmd_merge()` 시작 부분에 디버그 메시지 추가
+   - Git을 다시 컴파일하고 실행해보기
+
+이렇게 Git CLI에서 `cmd_merge()`까지의 여정은 단순해 보이는 명령 하나가 실제로는 여러 계층의 추상화와 검증을 거쳐 실행된다는 것을 보여줍니다. 이는 Git이 단순한 도구가 아니라 정교하게 설계된 시스템임을 알려줍니다.
