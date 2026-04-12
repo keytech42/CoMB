@@ -31,3 +31,4 @@ pnpm-debug.log*
 
 # --- custom ---
 src/content/**/__draft__/
+.agent/**

@@ -60,7 +60,7 @@ export default defineConfig({
 							{ label: 'Models Architecture', autogenerate: { directory: '03--AI/model arch' } },
 							{ label: 'CV', autogenerate: { directory: '03--AI/CV' } },
 							{ label: 'NLP', autogenerate: { directory: '03--AI/NLP' } },
-							{ label: 'Reinforcement Learning', autogenerate: { directory: '03--AI/reinforcement learning' } },
+							{ label: 'Reinforcement Learning', autogenerate: { directory: '03--AI/RL' } },
 						], 
 					},
 					{
@@ -117,61 +117,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 				'./src/styles/mathjax.css',
 			],
 			social: [
-				{ icon: 'github', label: 'GitHub', href: 'https://github.com/candleboxyz' },
+				{ icon: 'github', label: 'GitHub', href: 'https://github.com/keytech42' },
 				{ icon: 'linkedin', label: 'LinkedIn', href: '' }
 			],
-			// sidebar: [
-			// 	{
-			// 		label: '-- experimental --',
-			// 		autogenerate: { directory: '__draft__' }
-			// 	},
-			// 	{
-			// 		label: '-- draft --',
-			// 		autogenerate: { directory: '-- draft-pub --' }
-			// 	},
-			// 	{
-			// 		label: '∑ Mathematics',
-			// 		autogenerate: { directory: '01--math' }
-			// 	},
-			// 	{
-			// 		label: '🧮 CSE',
-			// 		autogenerate: { directory: '02--CSE' }
-			// 	},
-			// 	{
-			// 		label: '🧠 AI/ML',
-			// 		autogenerate: { directory: '03--AI' }
-			// 	},
-			// 	{
-			// 		label: '🌐 Web',
-			// 		autogenerate: {directory: '04--web' }
-			// 	},
-			// 	{
-			// 		// For 'developer experience' topics
-			// 		label: '👨‍💻 DX',
-			// 		autogenerate: {directory: '05--DX' }
-			// 	},
-			// 	{
-			// 		label: '📦 Environment Setup',
-			// 		// For environment setup guides,
-			// 		// like setting up a dev environment or configuring tools
-			// 		autogenerate: { directory: 'z--env_setup' }
-			// 	},
-			// 	{
-			// 		label: '표기법',
-			// 		autogenerate: { directory: 'z--notation_throughout_the_docs' }
-			// 	},
-			// 	{
-			// 		label: 'Guides',
-			// 		items: [
-			// 			// Each item here is one entry in the navigation menu.
-			// 			{ label: 'Example Guide', slug: 'guides/example' },
-			// 		],
-			// 	},
-			// 	{
-			// 		label: 'Reference',
-			// 		autogenerate: { directory: 'reference' },
-			// 	},
-			// ],
 		}),
 	],
 });
