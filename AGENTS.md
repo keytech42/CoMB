@@ -45,6 +45,34 @@ When writing or modifying content:
 - Do not commit files that may contain secrets (`.env`, credentials).
 - `git config core.ignorecase false` is required (see README).
 
+### 6. Branch Strategy (trunk-based)
+
+`main` is the single long-lived branch. Cloudflare Pages deploys from `main`.
+
+**When to branch vs. commit directly to main:**
+
+| Situation | Action |
+|---|---|
+| Quick edit, 1–2 commits expected | Commit directly to `main` |
+| Long authoring, 3+ commits expected | `content/<slug>` branch → squash merge |
+| Infrastructure / config / plugin change | `feat/<name>` branch → merge to `main` |
+| Bug fix | `fix/<name>` branch → merge to `main` |
+
+**Branch naming:** English, lowercase, hyphen-separated.
+
+**Merge policy:**
+- `content/*` → squash merge (clean single commit on main)
+- `feat/*`, `fix/*` → regular merge or squash, at discretion
+- Delete branch after merge
+
+**Draft lifecycle (three stages):**
+1. `__draft__/` — idea stage, gitignored, local only
+2. `draft: true` on `main` or a branch — tracked, pushed, not rendered on site
+3. Remove `draft: true` — published
+
+Branches and drafts solve different problems: branches isolate incomplete
+*code changes* from main; drafts isolate incomplete *content* from the live site.
+
 ## Project Structure
 
 ```
