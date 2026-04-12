@@ -1,0 +1,155 @@
+---
+title: Astro 프로젝트의 환경 변수 로딩 메커니즘
+lastUpdated: 2025-09-09
+sidebar:
+  badge: draft
+draft: true
+---
+
+## 개요
+
+Astro 프로젝트에서 환경 변수를 다루는 과정은 빌드 타임과 런타임, 그리고 로컬 개발 환경과 프로덕션 배포 환경에 따라 다르게 작동한다. 본 문서는 `astro.config.mjs`에서 환경 변수를 로드하는 메커니즘과 각 배포 플랫폼에서의 동작 방식을 상세히 기술한다.
+
+## 환경 변수 로딩의 필요성
+
+`astro.config.mjs`는 Astro 프로젝트의 설정 파일로, Node.js 환경에서 빌드 시점에 실행된다. 이 파일은 일반적인 Astro 컴포넌트와 달리 `.env` 파일의 환경 변수를 자동으로 로드하지 않는다. 따라서 환경 변수를 사용하려면 명시적인 로드 과정이 필요하다.
+
+## Vite의 `loadEnv` 함수
+
+### 함수 정의
+
+```typescript
+function loadEnv(
+  mode: string,
+  envDir: string,
+  prefixes: string = ''
+): Record<string, string>
+```
+
+### 매개변수 설명
+
+**mode (첫 번째 매개변수)**  
+환경 모드를 지정한다. 이 값은 어떤 `.env` 파일들을 로드할지 결정한다. 일반적으로 `development`, `production`, `test` 등의 값을 사용한다.
+
+**envDir (두 번째 매개변수)**  
+`.env` 파일들이 위치한 디렉토리 경로를 지정한다. `process.cwd()`를 사용하면 Node.js가 실행된 현재 작업 디렉토리, 즉 프로젝트 루트 디렉토리를 가리킨다.
+
+**prefixes (세 번째 매개변수)**  
+로드할 환경 변수의 접두사를 필터링한다. 빈 문자열을 전달하면 모든 환경 변수를 로드한다. Astro는 보안상 `PUBLIC_` 접두사가 붙은 변수만 클라이언트 측에 노출한다.
+
+### 파일 로딩 순서
+
+`loadEnv` 함수는 다음 순서로 파일을 찾아 로드한다. 후순위 파일의 변수가 선순위 파일의 동일한 변수를 덮어쓴다.
+
+1. `.env` - 모든 환경에서 공통으로 사용되는 기본값
+2. `.env.local` - 로컬 환경 전용 설정 (버전 관리 제외 권장)
+3. `.env.[mode]` - 특정 모드에서만 사용되는 설정
+4. `.env.[mode].local` - 특정 모드의 로컬 전용 설정 (버전 관리 제외 권장)
+
+## 실제 구현 코드 분석
+
+```javascript
+const env = loadEnv(process.env.NODE_ENV || 'development', process.cwd(), '');
+```
+
+이 코드는 다음과 같이 작동한다:
+
+1. `process.env.NODE_ENV`가 설정되어 있으면 해당 값을 사용하고, 없으면 `'development'`를 기본값으로 사용한다.
+2. 프로젝트 루트 디렉토리에서 해당 모드에 맞는 `.env` 파일들을 찾는다.
+3. 모든 환경 변수를 제한 없이 로드한다.
+
+## 배포 환경별 차이점
+
+### 로컬 개발 환경
+
+로컬 개발 환경에서는 `.env` 파일을 통해 환경 변수를 관리한다. `loadEnv` 함수가 이 파일들을 읽어 JavaScript 객체로 반환한다.
+
+```javascript
+// .env 파일
+PUBLIC_GTM_ID=GTM-DEVELOP
+
+// astro.config.mjs에서
+const env = loadEnv('development', process.cwd(), '');
+console.log(env.PUBLIC_GTM_ID); // "GTM-DEVELOP"
+```
+
+### Cloudflare Pages
+
+Cloudflare Pages는 빌드 시점에 환경 변수를 `process.env` 객체에 직접 주입한다. `.env` 파일은 사용하지 않으며, Cloudflare 대시보드에서 설정한 환경 변수가 직접 적용된다.
+
+```javascript
+// Cloudflare Pages 빌드 환경
+console.log(process.env.PUBLIC_GTM_ID); // Cloudflare에서 설정한 값
+```
+
+### Vercel, Netlify
+
+이들 플랫폼도 Cloudflare Pages와 유사하게 `process.env`에 환경 변수를 주입한다. 각 플랫폼의 대시보드나 CLI를 통해 환경 변수를 설정한다.
+
+## 범용 호환 코드 작성
+
+로컬 개발과 다양한 배포 플랫폼을 모두 지원하려면 다음과 같은 패턴을 사용한다:
+
+```javascript
+import { loadEnv } from 'vite';
+
+// 로컬 개발을 위한 .env 파일 로드
+const env = loadEnv(process.env.NODE_ENV || 'development', process.cwd(), '');
+
+// 배포 환경의 process.env와 로컬 .env 모두 확인
+const GTM_ID = process.env.PUBLIC_GTM_ID || env.PUBLIC_GTM_ID;
+```
+
+이 패턴은 다음 순서로 환경 변수를 찾는다:
+
+1. 먼저 `process.env.PUBLIC_GTM_ID`를 확인한다 (배포 플랫폼).
+2. 없으면 `env.PUBLIC_GTM_ID`를 사용한다 (로컬 `.env` 파일).
+
+## 조건부 기능 활성화
+
+환경 변수가 설정되지 않은 경우를 고려하여 조건부로 기능을 활성화할 수 있다:
+
+```javascript
+export default defineConfig({
+  integrations: [
+    starlight({
+      head: GTM_ID ? [
+        // GTM_ID가 있을 때만 스크립트 추가
+        { tag: 'script', content: `...` }
+      ] : [],
+    }),
+  ],
+});
+```
+
+## 보안 고려사항
+
+환경 변수를 다룰 때는 다음 사항들을 고려해야 한다:
+
+1. **접두사 규칙**: Astro는 `PUBLIC_` 접두사가 있는 변수만 클라이언트에 노출한다. 민감한 정보는 이 접두사를 사용하지 않는다.
+
+2. **버전 관리 제외**: `.env.local` 파일과 `.env.*.local` 파일들은 `.gitignore`에 추가하여 버전 관리에서 제외한다.
+
+3. **환경별 분리**: 개발, 스테이징, 프로덕션 환경의 환경 변수를 명확히 분리한다.
+
+## 디버깅 방법
+
+환경 변수 로딩 문제를 디버깅할 때는 다음 방법들을 활용한다:
+
+```javascript
+// 로드된 모든 환경 변수 확인
+console.log('Loaded from .env:', env);
+
+// process.env 직접 확인
+console.log('Process env:', process.env.PUBLIC_GTM_ID);
+
+// 최종 사용될 값 확인
+console.log('Final value:', GTM_ID);
+
+// 현재 모드 확인
+console.log('Current mode:', process.env.NODE_ENV || 'development');
+```
+
+## 결론
+
+Astro 프로젝트에서 환경 변수를 다루는 것은 빌드 설정 파일의 특성과 다양한 배포 플랫폼의 차이를 이해해야 한다. Vite의 `loadEnv` 함수는 로컬 개발을 위한 도구이며, 프로덕션 배포 시에는 각 플랫폼의 환경 변수 시스템을 고려해야 한다. 두 방식을 모두 지원하는 코드를 작성함으로써 개발부터 배포까지 일관된 환경 변수 관리가 가능하다.

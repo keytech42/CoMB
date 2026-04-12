@@ -1,0 +1,222 @@
+---
+title: Vim Cheatsheet 🚀
+description: 실무에서 자주 사용하는 Vim 명령어 모음
+sidebar:
+  badge:
+    text: cheatsheet
+    variant: tip
+draft: false
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+실무에서 정말 자주 쓰는 Vim 명령어들만 모았어. 이거만 알아도 작업 속도가 확 달라질 거야!
+
+## 🎯 Mode 전환
+
+<Card title="기본 모드 전환">
+- `i` - Insert mode (커서 앞에서 입력)
+- `a` - Insert mode (커서 뒤에서 입력)
+- `o` - 아래 줄에 새 줄 만들고 Insert mode
+- `O` - 위에 새 줄 만들고 Insert mode
+- `ESC` 또는 `Ctrl+[` - Normal mode로 돌아가기
+- `v` - Visual mode (문자 단위 선택)
+- `V` - Visual Line mode (줄 단위 선택)
+- `Ctrl+v` - Visual Block mode (블록 선택)
+</Card>
+
+## 🚀 이동 명령어
+
+<Tabs>
+<TabItem label="기본 이동">
+```vim
+h, j, k, l    # 좌, 하, 상, 우
+w / W         # 다음 단어 시작 (W는 구두점 무시)
+b / B         # 이전 단어 시작
+e / E         # 단어 끝으로
+0             # 줄 맨 앞
+^             # 줄의 첫 번째 non-blank 문자
+$             # 줄 맨 끝
+gg            # 파일 맨 위
+G             # 파일 맨 아래
+```
+</TabItem>
+<TabItem label="빠른 이동">
+```vim
+5j            # 5줄 아래로
+20G           # 20번째 줄로
+%             # 매칭되는 괄호로
+*             # 현재 단어와 같은 다음 단어
+#             # 현재 단어와 같은 이전 단어
+f{char}       # 현재 줄에서 {char} 찾기
+t{char}       # {char} 바로 앞까지
+;             # f/t 명령 반복
+,             # f/t 명령 역방향 반복
+```
+</TabItem>
+</Tabs>
+
+## ✂️ 편집 명령어
+
+### 삭제 & 복사 & 붙여넣기
+
+<CardGrid>
+<Card title="삭제">
+```vim
+x          # 한 글자 삭제
+dd         # 현재 줄 삭제
+D          # 커서부터 줄 끝까지 삭제
+dw         # 단어 삭제
+d$         # 줄 끝까지 삭제
+d0         # 줄 처음까지 삭제
+dgg        # 파일 처음까지 삭제
+dG         # 파일 끝까지 삭제
+```
+</Card>
+<Card title="복사 & 붙여넣기">
+```vim
+yy         # 현재 줄 복사
+yw         # 단어 복사
+y$         # 줄 끝까지 복사
+p          # 커서 뒤에 붙여넣기
+P          # 커서 앞에 붙여넣기
+"*y        # 시스템 클립보드로 복사
+"*p        # 시스템 클립보드에서 붙여넣기
+```
+</Card>
+</CardGrid>
+
+### 수정 명령어
+
+```vim
+r{char}    # 한 글자 교체
+R          # Replace mode (덮어쓰기 모드)
+cw         # 단어 변경
+C          # 커서부터 줄 끝까지 변경
+cc         # 전체 줄 변경
+~          # 대소문자 전환
+u          # 실행 취소 (Undo)
+Ctrl+r     # 다시 실행 (Redo)
+.          # 마지막 명령 반복 ⭐
+```
+
+## 🔄 줄 이동 & 정렬
+
+```vim
+# 줄 이동
+:m +1      # 현재 줄을 아래로
+:m -2      # 현재 줄을 위로
+ddp        # 현재 줄을 아래로 (간단한 방법)
+ddkP       # 현재 줄을 위로 (간단한 방법)
+
+# 정렬
+==         # 현재 줄 인덴트 정렬
+gg=G       # 전체 파일 인덴트 정렬
+>          # 인덴트 증가
+<          # 인덴트 감소
+```
+
+## 🔍 검색 & 치환
+
+<Tabs>
+<TabItem label="검색">
+```vim
+/pattern     # 앞으로 검색
+?pattern     # 뒤로 검색
+n            # 다음 검색 결과
+N            # 이전 검색 결과
+*            # 현재 단어 검색
+#            # 현재 단어 역방향 검색
+/\<word\>    # 정확한 단어만 검색
+```
+</TabItem>
+<TabItem label="치환">
+```vim
+:s/old/new/      # 현재 줄에서 첫 번째만
+:s/old/new/g     # 현재 줄에서 모두
+:%s/old/new/g    # 파일 전체에서 모두
+:%s/old/new/gc   # 확인하면서 치환
+:5,10s/old/new/g # 5~10줄에서 치환
+```
+</TabItem>
+</Tabs>
+
+## 💾 파일 작업
+
+```vim
+:w           # 저장
+:wq          # 저장하고 종료
+:q!          # 저장하지 않고 강제 종료
+:e {file}    # 파일 열기
+:sp {file}   # 수평 분할로 파일 열기
+:vsp {file}  # 수직 분할로 파일 열기
+Ctrl+w w     # 창 간 이동
+```
+
+## 🎨 Visual Mode 활용
+
+```vim
+v            # Visual mode 시작
+V            # Visual Line mode
+Ctrl+v       # Visual Block mode
+
+# Visual mode에서
+d            # 선택 영역 삭제
+y            # 선택 영역 복사
+c            # 선택 영역 변경
+>            # 인덴트 증가
+<            # 인덴트 감소
+```
+
+## 🚀 Pro Tips
+
+<Card title="진짜 유용한 조합들" icon="rocket">
+1. `ci"` - 따옴표 안의 내용 변경
+2. `da{` - 중괄호 블록 전체 삭제
+3. `vi(` - 괄호 안의 내용 선택
+4. `dt,` - 콤마 전까지 삭제
+5. `A` - 줄 끝으로 가서 입력 모드
+6. `I` - 줄 처음으로 가서 입력 모드
+7. `J` - 아래 줄과 합치기
+8. `gU` - 대문자로 변환 (Visual mode에서)
+9. `gu` - 소문자로 변환 (Visual mode에서)
+10. `Ctrl+a` / `Ctrl+x` - 숫자 증가/감소
+</Card>
+
+## 🔧 .vimrc 추천 설정
+
+```vim
+" 줄 번호 표시
+set number
+set relativenumber
+
+" 검색 하이라이트
+set hlsearch
+set incsearch
+
+" 탭 설정
+set tabstop=4
+set shiftwidth=4
+set expandtab
+
+" 줄 이동 단축키
+nnoremap <A-j> :m .+1<CR>==
+nnoremap <A-k> :m .-2<CR>==
+vnoremap <A-j> :m '>+1<CR>gv=gv
+vnoremap <A-k> :m '<-2<CR>gv=gv
+
+" 클립보드 연동
+set clipboard=unnamedplus
+```
+
+:::tip[기억하세요!]
+Vim은 muscle memory가 중요해! 처음엔 느려도 꾸준히 쓰다 보면 손가락이 알아서 움직일 거야. 특히 `.` (마지막 명령 반복)은 진짜 꿀기능이니까 꼭 활용해봐!
+:::
+
+---
+
+### 📚 추가 학습 자료
+- `vimtutor` 명령어로 인터랙티브 튜토리얼 시작
+- [Vim Adventures](https://vim-adventures.com/) - 게임으로 배우는 Vim
+- `:help` - Vim 내장 도움말 (진짜 자세함!)
