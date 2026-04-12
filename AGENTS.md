@@ -1,5 +1,7 @@
 # AGENTS.md
 
+<!-- CLAUDE.md is a symlink to this file. Always edit AGENTS.md, never CLAUDE.md directly. -->
+
 Project-level instructions for AI coding agents working on this repository.
 
 ## Project Overview
