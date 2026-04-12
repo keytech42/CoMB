@@ -37,9 +37,10 @@ First, clone the repository to your local machine.
 
 ```shell
 git config core.ignorecase false
+git config core.hooksPath .githooks
 ```
 
-> **Note:** This command applies the setting locally to this repository only and **will not affect other projects**.
+> **Note:** These commands apply locally to this repository only and **will not affect other projects**. The hooks path enables the pre-push build verification hook.
 
 ### 3\. Install & Run
 

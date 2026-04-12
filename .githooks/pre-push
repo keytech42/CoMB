@@ -1,0 +1,18 @@
+#!/bin/sh
+# Pre-push hook: verify the site builds before pushing.
+# Prevents broken builds from reaching the remote/deployment.
+
+echo "Running pre-push build verification..."
+
+npm run build --silent 2>&1
+BUILD_EXIT=$?
+
+if [ $BUILD_EXIT -ne 0 ]; then
+    echo ""
+    echo "Build FAILED. Push aborted."
+    echo "Fix build errors before pushing."
+    exit 1
+fi
+
+echo "Build OK. Pushing..."
+exit 0
