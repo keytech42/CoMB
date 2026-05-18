@@ -1,5 +1,6 @@
 // @ts-check
 import { defineConfig } from "astro/config";
+import { fileURLToPath } from "node:url";
 import { loadEnv } from "vite";
 import starlight from "@astrojs/starlight";
 
@@ -20,6 +21,15 @@ export default defineConfig({
   markdown: {
     remarkPlugins: [remarkMath, remarkMermaid],
     rehypePlugins: [rehypeMathJax],
+  },
+
+  vite: {
+    resolve: {
+      alias: {
+        "@components": fileURLToPath(new URL("./src/components", import.meta.url)),
+        "@assets": fileURLToPath(new URL("./src/assets", import.meta.url)),
+      },
+    },
   },
 
   integrations: [
@@ -160,6 +170,12 @@ export default defineConfig({
         starlightVideos(),
       ],
       title: "CoMB",
+      /*
+      // Advance Tip : Auto-import components globally
+      components: {
+        HoverNote: './src/components/HoverNote.astro'
+      },
+      */
       head: [
         {
           tag: "link",
