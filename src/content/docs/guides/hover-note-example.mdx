@@ -1,0 +1,60 @@
+---
+title: Hover Note Component Example
+description: Example usage of the HoverNote component
+---
+
+import HoverNote from '@components/HoverNote.astro';
+
+This guide demonstrates how to use the `HoverNote` component to add interactive hover notes to your documentation.
+
+## What is a Hover Note?
+
+A hover note is a highlighted text element that displays additional information when the user hovers their mouse over it. This is useful for providing supplementary context without cluttering the main content.
+
+## Basic Usage
+
+### Simple Text (via Prop)
+
+For simple text without complex formatting, you can use the `content` prop.
+
+<HoverNote content="This is a simple hover note with plain text." label="Note">
+  Hover over this text
+</HoverNote>
+
+### MDX Content (via Slot)
+
+For rich content including math, code blocks, or lists, use the `note` slot. This leverages Starlight's full rendering engine.
+
+<HoverNote label="Equation">
+  Hover for a mathematical formula
+  <Fragment slot="note">
+    The fundamental theorem of calculus:
+    $$\int_a^b f(x)dx = F(b) - F(a)$$
+    Where $F$ is an antiderivative of $f$.
+  </Fragment>
+</HoverNote>
+
+### Complex Formatting
+
+You can include almost anything inside a hover note:
+
+<HoverNote label="Code Example">
+  Hover for code and lists
+  <Fragment slot="note">
+    #### Features:
+    - Interactive tooltips
+    - **MDX** support
+    - Starlight integration
+
+    ```js
+    console.log('Hover notes are cool!');
+    ```
+  </Fragment>
+</HoverNote>
+
+## Best Practices
+
+1. **Keep content concise**: Hover notes should provide quick additional context.
+2. **Use clear labels**: Make it obvious what type of information is in the note.
+3. **Don't overuse**: Only add hover notes where they provide real value.
+4. **Consider mobile users**: Hover notes may require a tap on touch devices.
