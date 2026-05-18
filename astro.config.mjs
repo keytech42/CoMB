@@ -108,6 +108,10 @@ export default defineConfig({
             // icon: 'puzzle',
             items: [
               {
+                label: "// Story //",
+                items: [{ autogenerate: { directory: "03--AI/__story__" } }],
+              },
+              {
                 label: "Fundamentals",
                 items: [{ autogenerate: { directory: "03--AI/fundamentals" } }],
               },
