@@ -1,6 +1,6 @@
 # AGENTS.md
 
-<!-- CLAUDE.md is a symlink to this file. Always edit AGENTS.md, never CLAUDE.md directly. -->
+<!-- CLAUDE.md and GEMINI.md are symlinks to this file. Always edit AGENTS.md, never CLAUDE.md or GEMINI.md directly. -->
 
 Project-level instructions for AI coding agents working on this repository.
 
@@ -63,7 +63,7 @@ When writing or modifying content:
 **Branch naming:** English, lowercase, hyphen-separated.
 
 **Merge policy:**
-- `content/*` → squash merge (clean single commit on main)
+- `cnt/*` → squash merge (clean single commit on main)
 - `feat/*`, `fix/*` → regular merge or squash, at discretion
 - Delete branch after merge
 
