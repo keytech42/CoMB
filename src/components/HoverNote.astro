@@ -1,0 +1,331 @@
+---
+// src/components/HoverNote.astro
+/**
+ * HoverNote Component
+ *
+ * Displays a tooltip when hovering over the trigger text.
+ * Supports MDX content via the 'note' slot.
+ *
+ * Usage:
+ * <HoverNote label="Note">
+ *   Hover me
+ *   <Fragment slot="note">
+ *     **MDX** content here! $\sqrt{x^2+y^2}$
+ *   </Fragment>
+ * </HoverNote>
+ */
+
+export interface Props {
+    label?: string;
+    class?: string;
+    content?: string; // Fallback for simple text
+}
+
+const { label = "Note", class: customClass = "", content } = Astro.props;
+
+// Render the 'note' slot at build time.
+// This allows the MDX engine (and plugins like MathJax) to process the content.
+let noteHtml = await Astro.slots.render("note");
+
+// If no slot is provided, fallback to the 'content' prop
+if (!noteHtml && content) {
+    noteHtml = content;
+}
+---
+
+<style>
+    .hover-note-container {
+        display: inline;
+        position: relative;
+    }
+
+    .hover-note-trigger {
+        display: inline-block;
+        vertical-align: baseline;
+        background-color: var(--sl-color-accent-low);
+        /* WIDTH CONTROL (Highlighting): Adjust horizontal padding (0.4em) to change highlight width */
+        padding: 0 0.4em;
+        margin: 0 0.1em;
+        border-radius: 0.25em;
+        cursor: help;
+        transition: all 0.2s ease;
+        position: relative;
+        color: inherit;
+        text-decoration: none;
+        line-height: 1.2;
+    }
+
+    /* Precision Underline via Pseudo-element */
+    .hover-note-trigger::after {
+        content: "";
+        position: absolute;
+        /* GAP CONTROL: Use a smaller/negative value to move the line lower (e.g., -1px) */
+        bottom: -1px;
+        /* WIDTH CONTROL (Underline): Adjust left/right to change underline length.
+           0 matches highlight width; 0.4em matches text width. */
+        left: 0.4em;
+        right: 0.4em;
+        height: 4px;
+        background-image: radial-gradient(
+            circle,
+            var(--sl-color-gray-3) 1.2px,
+            transparent 1.2px
+        );
+        /* DENSITY: Decrease the first value (e.g., 5px) to make dots denser */
+        background-size: 5px 100%;
+        background-repeat: repeat-x;
+        transition: background-image 0.2s ease;
+    }
+
+    .hover-note-trigger:hover {
+        background-color: var(--sl-color-accent-low);
+        opacity: 0.8;
+        transform: translateY(-1px);
+    }
+
+    .hover-note-trigger:hover::after {
+        background-image: radial-gradient(
+            circle,
+            var(--sl-color-accent) 1.2px,
+            transparent 1.2px
+        );
+    }
+
+    /* Force any MDX-generated paragraphs inside the trigger to be inline and stripped of styling */
+    .hover-note-trigger :global(p) {
+        display: inline !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: transparent !important;
+        color: inherit !important;
+        font: inherit !important;
+        line-height: inherit !important;
+    }
+</style>
+
+<style is:global>
+    /* Tooltip styling using Starlight design tokens */
+    .hover-note-tooltip {
+        position: absolute;
+        z-index: 1000;
+        background-color: var(--sl-color-bg-nav);
+        border: 1px solid var(--sl-color-gray-5);
+        border-radius: 0.5rem;
+        box-shadow: var(--sl-shadow-md);
+
+        /* Adjust MAX-WIDTH here (currently 450px) */
+        max-width: 450px;
+
+        min-width: 120px;
+        font-size: var(--sl-text-sm);
+        line-height: var(--sl-line-height-body);
+        color: var(--sl-color-text);
+        display: none;
+        pointer-events: auto; /* ALLOW INTERACTION */
+        overflow: hidden;
+    }
+
+    .hover-note-tooltip.visible {
+        display: block;
+        animation: hover-note-fade-in 0.15s ease-out;
+    }
+
+    /* Invisible bridge to prevent mouseleave when moving from trigger to tooltip */
+    .hover-note-tooltip::before {
+        content: "";
+        position: absolute;
+        top: -15px;
+        left: 0;
+        right: 0;
+        height: 20px;
+        /* background: rgba(255,0,0,0.1); /* Debugging */
+    }
+
+    .hover-note-tooltip[data-placement="top"]::before {
+        top: auto;
+        bottom: -15px;
+    }
+
+    .hover-note-tooltip .tooltip-header {
+        padding: 0.4rem 0.75rem;
+        border-bottom: 1px solid var(--sl-color-gray-5);
+        font-weight: 600;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--sl-color-accent-high);
+        background-color: var(--sl-color-gray-6);
+    }
+
+    .hover-note-tooltip .tooltip-body {
+        padding: 0.75rem;
+    }
+
+    /* Ensure images and code blocks inside tooltip don't overflow */
+    .hover-note-tooltip .tooltip-body img {
+        max-width: 100%;
+        height: auto;
+    }
+
+    .hover-note-tooltip .tooltip-body pre {
+        padding: 0.5rem;
+        font-size: 0.8em;
+        margin: 0.5rem 0;
+    }
+
+    .hover-note-tooltip .tooltip-body p:last-child {
+        margin-bottom: 0;
+    }
+
+    @keyframes hover-note-fade-in {
+        from {
+            opacity: 0;
+            transform: translateY(4px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
+<script>
+    let tooltip: HTMLElement | null = null;
+    let hideTimeout: number | null = null;
+
+    function init() {
+        const containers = document.querySelectorAll(".hover-note-container");
+
+        containers.forEach((container) => {
+            const trigger = container.querySelector(
+                ".hover-note-trigger",
+            ) as HTMLElement;
+            const template = container.querySelector(
+                ".hover-note-template",
+            ) as HTMLTemplateElement;
+            const label = (container as HTMLElement).dataset.label;
+
+            if (!trigger || !template) return;
+
+            trigger.addEventListener("mouseenter", (e) => {
+                if (hideTimeout) {
+                    clearTimeout(hideTimeout);
+                    hideTimeout = null;
+                }
+                showTooltip(e as MouseEvent, template.innerHTML, label);
+            });
+
+            trigger.addEventListener("mouseleave", () => {
+                startHideTimer();
+            });
+        });
+    }
+
+    function startHideTimer() {
+        if (hideTimeout) return;
+        hideTimeout = window.setTimeout(() => {
+            hideTooltip();
+            hideTimeout = null;
+        }, 150); // Small delay to allow moving to tooltip
+    }
+
+    function showTooltip(e: MouseEvent, html: string, label?: string) {
+        if (!tooltip) {
+            tooltip = document.createElement("div");
+            tooltip.className = "hover-note-tooltip";
+
+            // Stay open when mouse is over the tooltip itself
+            tooltip.addEventListener("mouseenter", () => {
+                if (hideTimeout) {
+                    clearTimeout(hideTimeout);
+                    hideTimeout = null;
+                }
+            });
+
+            tooltip.addEventListener("mouseleave", () => {
+                startHideTimer();
+            });
+
+            document.body.appendChild(tooltip);
+        }
+
+        if (!html || html.trim() === "") return;
+
+        tooltip.innerHTML = `
+            <div class="tooltip-content">
+                ${label ? `<header class="tooltip-header">${label}</header>` : ""}
+                <div class="tooltip-body">${html}</div>
+            </div>
+        `;
+
+        tooltip.classList.add("visible");
+
+        // Position relative to trigger and mouse entry point
+        positionTooltip(e.currentTarget as HTMLElement, e.clientX);
+    }
+
+    function positionTooltip(trigger: HTMLElement, mouseX: number) {
+        if (!tooltip) return;
+
+        const rect = trigger.getBoundingClientRect();
+
+        // Temporarily show to calculate dimensions
+        tooltip.style.display = "block";
+        tooltip.style.visibility = "hidden";
+        const tooltipRect = tooltip.getBoundingClientRect();
+        tooltip.style.visibility = "visible";
+
+        // Vertical placement
+        let top = rect.bottom + window.scrollY + 6;
+        let placement = "bottom";
+
+        // Flip to top if it overflows bottom
+        if (rect.bottom + tooltipRect.height + 20 > window.innerHeight) {
+            top = rect.top + window.scrollY - tooltipRect.height - 6;
+            placement = "top";
+        }
+        tooltip.dataset.placement = placement;
+
+        // Horizontal placement: Center on the mouse entry point, but keep within trigger bounds if possible
+        // Actually, centering on mouse entry is more "dynamic" for long triggers.
+        let left = mouseX + window.scrollX - tooltipRect.width / 2;
+
+        // Boundary checks (ensure it stays on screen)
+        const padding = 10;
+        if (left < padding) left = padding;
+        if (left + tooltipRect.width > window.innerWidth - padding) {
+            left = window.innerWidth - tooltipRect.width - padding;
+        }
+
+        tooltip.style.top = `${top}px`;
+        tooltip.style.left = `${left}px`;
+    }
+
+    function hideTooltip() {
+        if (tooltip) {
+            tooltip.classList.remove("visible");
+            tooltip.style.display = "none";
+        }
+    }
+
+    // Handle window resize or scroll to reposition or hide
+    window.addEventListener("resize", hideTooltip);
+    window.addEventListener("scroll", hideTooltip, { passive: true });
+
+    // Initial load
+    init();
+
+    // Re-initialize on Astro page transitions
+    document.addEventListener("astro:page-load", init);
+
+    // Also handle content updates (like Starlight's search or dynamic loading)
+    document.addEventListener("astro:after-swap", init);
+</script>
+
+<span class={`hover-note-container ${customClass}`} data-label={label}>
+    <span class="hover-note-trigger">
+        <slot />
+    </span>
+    {/* Store the rendered HTML in a hidden template */}
+    <template class="hover-note-template" set:html={noteHtml} />
+</span>
