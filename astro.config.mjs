@@ -42,6 +42,10 @@ export default defineConfig({
             // icon: 'open-book',
             items: [
               {
+                label: "Fundamental Intuition",
+                items: [{ autogenerate: { directory: "01--math/0_fundamental-intuition" } }],
+              },
+              {
                 label: "Algebra",
                 items: [{ autogenerate: { directory: "01--math/algebra" } }],
               },
@@ -158,6 +162,7 @@ export default defineConfig({
             items: [
               // Each item here is one entry in the navigation menu.
               { label: "Example Guide", slug: "guides/example" },
+              { label: "Hover Note Example", slug: "guides/hover-note-example" },
               {
                 label: "Notation",
                 items: [
@@ -175,10 +180,10 @@ export default defineConfig({
       ],
       title: "CoMB",
       /*
-      // Advance Tip : Auto-import components globally
-      components: {
-        HoverNote: './src/components/HoverNote.astro'
-      },
+      // Advanced Tip: Auto-import components globally
+      // components: {
+      //   HoverNote: './src/components/HoverNote.astro'
+      // },
       */
       head: [
         {
